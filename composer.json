@@ -3,6 +3,9 @@
     "mollie/mollie-api-php": "^3.7"
   },
   "config": {
-    "vendor-dir": "src/mollie/vendor"
+    "vendor-dir": "src/mollie/vendor",
+    "platform": {
+      "php": "8.3.35"
+    }
   }
 }
