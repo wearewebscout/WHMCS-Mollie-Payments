@@ -26,8 +26,14 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
     if (substr($params['returnurl'], 0, 1) == '/')
         $params['returnurl'] = $params['systemurl'] . $params['returnurl'];
 
+    // Webscout: WHMCS bewaart de sessietaal als 'Language' (hoofdletter), de actieve taal staat in \Lang
+    if (empty($params['language']) && class_exists('\Lang'))
+        $params['language'] = \Lang::getName();
+
     if (empty($params['language']))
-        $params['language'] = ((isset($_SESSION['language'])) ? $_SESSION['language'] : $whmcs->get_config('Language'));
+        $params['language'] = ((isset($_SESSION['Language'])) ? $_SESSION['Language'] : ((isset($_SESSION['language'])) ? $_SESSION['language'] : $whmcs->get_config('Language')));
+
+    $params['language'] = strtolower(basename((string) $params['language']));
 
     if (empty($params['language']))
         $params['language'] = 'english';
