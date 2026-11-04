@@ -2,6 +2,10 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+// Webscout: versie van onze fork, bij elke wijziging ophogen
+if (!defined('MOLLIE_WS_VERSION'))
+    define('MOLLIE_WS_VERSION', '1.1.0');
+
 function mollie_config()
 {
     return array(
@@ -44,20 +48,8 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
     /* @var array $_GATEWAYLANG */
     require __DIR__ . '/lang/' . $params['language'] . '.php';
 
-    // Webscout: locale meegeven aan Mollie, taal van de klant plus regio. De regio bepaalt bij
-    // overschrijving de IBAN (BE, NL of DE), dus land van de klant en anders standaard België.
-    $mollieLocales = array('ca_ES', 'cs_CZ', 'da_DK', 'de_AT', 'de_CH', 'de_DE', 'de_LU', 'el_GR', 'en_BE', 'en_GB', 'en_NL', 'en_US', 'es_ES', 'fi_FI', 'fr_BE', 'fr_FR', 'fr_LU', 'hu_HU', 'is_IS', 'it_IT', 'lt_LT', 'lv_LV', 'nb_NO', 'nl_BE', 'nl_NL', 'pl_PL', 'pt_PT', 'sk_SK', 'sl_SI', 'sv_SE', 'tr_TR');
-    $languageCodes = array('dutch' => 'nl', 'english' => 'en', 'french' => 'fr', 'german' => 'de', 'spanish' => 'es', 'italian' => 'it', 'portuguese-pt' => 'pt');
-    $languageCode = isset($languageCodes[$params['language']]) ? $languageCodes[$params['language']] : 'en';
-    $clientCountry = strtoupper((string) (isset($params['clientdetails']['countrycode']) ? $params['clientdetails']['countrycode'] : ''));
-    $mollieLocale = null;
-
-    foreach (array($languageCode . '_' . $clientCountry, $languageCode . '_BE') as $candidate) {
-        if (in_array($candidate, $mollieLocales, true)) {
-            $mollieLocale = $candidate;
-            break;
-        }
-    }
+    // Webscout: locale meegeven aan Mollie, zie mollie_locale()
+    $mollieLocale = mollie_locale($params['language'], isset($params['clientdetails']['countrycode']) ? $params['clientdetails']['countrycode'] : '');
 
     $tableCheckQuery = full_query('SHOW TABLES LIKE \'gateway_mollie\'');
 
@@ -140,4 +132,29 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
             return $return;
         }
     }
+}
+
+/**
+ * Webscout: locale voor Mollie, taal van de klant plus regio. De regio bepaalt bij
+ * overschrijving de IBAN (BE, NL of DE), dus land van de klant en anders standaard België.
+ *
+ * @param string $language WHMCS-taalnaam (dutch, english, ...)
+ * @param string $countryCode landcode van de klant (BE, NL, ...)
+ * @return string|null
+ */
+function mollie_locale($language, $countryCode)
+{
+    $mollieLocales = array('ca_ES', 'cs_CZ', 'da_DK', 'de_AT', 'de_CH', 'de_DE', 'de_LU', 'el_GR', 'en_BE', 'en_GB', 'en_NL', 'en_US', 'es_ES', 'fi_FI', 'fr_BE', 'fr_FR', 'fr_LU', 'hu_HU', 'is_IS', 'it_IT', 'lt_LT', 'lv_LV', 'nb_NO', 'nl_BE', 'nl_NL', 'pl_PL', 'pt_PT', 'sk_SK', 'sl_SI', 'sv_SE', 'tr_TR');
+    $languageCodes = array('dutch' => 'nl', 'english' => 'en', 'french' => 'fr', 'german' => 'de', 'spanish' => 'es', 'italian' => 'it', 'portuguese-pt' => 'pt');
+    $language = strtolower((string) $language);
+    $languageCode = isset($languageCodes[$language]) ? $languageCodes[$language] : 'en';
+    $clientCountry = strtoupper((string) $countryCode);
+
+    foreach (array($languageCode . '_' . $clientCountry, $languageCode . '_BE') as $candidate) {
+        if (in_array($candidate, $mollieLocales, true)) {
+            return $candidate;
+        }
+    }
+
+    return null;
 }

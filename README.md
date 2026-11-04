@@ -19,3 +19,22 @@ You can use `Mollie Checkout` to use the Mollie Payments checkout pages. In this
 Support is best-effort through the Github issue tracker. Business support (responsetime within 24 hours, normally less then 1 hour) through our [website](https://0100dev.nl/) against our hourly rate at € 75,- excl. VAT. Please create an account at our website before contacting us.
 
 [More information through Mollie about Mollie Payments](https://www.mollie.com/en/payments)
+
+## Webscout-fork (wearewebscout)
+
+Versie van de fork: `MOLLIE_WS_VERSION` in `src/mollie/mollie.php` (nu 1.1.0).
+
+### Automatisch betalen (Mollie Recurring), sinds 1.1.0
+
+2 tokenised gateways bovenop dezelfde Mollie-account:
+
+| Gateway | WHMCS-type | Eerste betaling | Mandaat |
+|---|---|---|---|
+| `molliesubscribecard_devapp` (Mollie automatisch, kaart) | kaart | creditcard | creditcard |
+| `molliesubscribesepa_devapp` (Mollie automatisch, domiciliëring) | Bank | bancontact, ideal, belfius, kbc | directdebit (SEPA) |
+
+- Logica in `src/mollie/subscribe/lib.php`, eindpunten `start.php` (eerste betaling, uit de iframe naar Mollie), `return.php` (klant terug van Mollie) en `webhook.php`.
+- Hooks in `src/mollie/subscribe/hooks.php` (InvoicePaid en DailyCronJob), in te laden via `includes/hooks/mollie_subscribe.php` met 1 regel: `<?php require_once ROOTDIR . '/modules/gateways/mollie/subscribe/hooks.php';`
+- Eigen tabellen: `gateway_mollie_customers`, `gateway_mollie_mandates`, `gateway_mollie_recurring` (maakt de gateway zelf aan).
+- Remote token in WHMCS: `cst_...:mdt_...`.
+- Tests: `cd tests/recurring && composer install && ./run.sh` (nagebootste WHMCS en Mollie). Rooktest tegen de Mollie-testmodus: `MOLLIE_TEST_KEY=test_... php tests/recurring/mollie_testmode.php`.

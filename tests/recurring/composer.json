@@ -1,0 +1,9 @@
+{
+    "require": {
+        "illuminate/database": "^13.34",
+        "mollie/mollie-api-php": "3.15.0"
+    },
+    "config": {
+        "platform-check": false
+    }
+}
