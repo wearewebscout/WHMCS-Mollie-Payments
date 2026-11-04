@@ -75,7 +75,7 @@ namespace {
         foreach (array('tblclients', 'tblinvoices', 'tblaccounts', 'tblpaymethods', 'tblactivitylog', 'tblgatewaylog', 'tblpaymentgateways', 'gateway_mollie_customers', 'gateway_mollie_mandates', 'gateway_mollie_recurring') as $t)
             $s->dropIfExists($t);
 
-        $s->create('tblclients', function ($t) { $t->increments('id'); foreach (array('firstname', 'lastname', 'companyname', 'email', 'country', 'language') as $c) $t->string($c)->default(''); });
+        $s->create('tblclients', function ($t) { $t->increments('id'); foreach (array('firstname', 'lastname', 'companyname', 'email', 'country', 'language', 'defaultgateway') as $c) $t->string($c)->default(''); });
         $s->create('tblinvoices', function ($t) { $t->increments('id'); $t->integer('userid'); $t->string('invoicenum')->default(''); $t->date('duedate')->nullable(); $t->dateTime('datepaid')->nullable(); $t->decimal('total', 10, 2); $t->string('status'); $t->string('paymentmethod')->default(''); });
         $s->create('tblaccounts', function ($t) { $t->increments('id'); $t->integer('userid')->default(0); $t->integer('invoiceid'); $t->string('gateway')->default(''); $t->string('transid'); $t->decimal('amountin', 10, 2)->default(0); $t->decimal('amountout', 10, 2)->default(0); $t->string('description')->default(''); });
         $s->create('tblpaymethods', function ($t) { $t->increments('id'); $t->integer('userid'); $t->string('gateway_name'); $t->string('type'); $t->string('token'); $t->string('description')->default(''); $t->string('last4')->default(''); $t->string('expiry')->default(''); $t->string('cardtype')->default(''); $t->dateTime('deleted_at')->nullable(); });
@@ -154,6 +154,10 @@ namespace {
 
     function localAPI($cmd, $params = array(), $admin = '')
     {
+        if ($cmd === 'UpdateClient') {
+            Capsule::table('tblclients')->where('id', $params['clientid'])->update(array('defaultgateway' => $params['paymentmethod']));
+            return array('result' => 'success', 'clientid' => $params['clientid']);
+        }
         if ($cmd === 'UpdateInvoice') {
             Capsule::table('tblinvoices')->where('id', $params['invoiceid'])->update(array('status' => $params['status']));
             return array('result' => 'success', 'invoiceid' => $params['invoiceid']);
@@ -197,6 +201,8 @@ namespace {
         $invoice = Capsule::table('tblinvoices')->where('id', $invoiceId)->first();
         if ($invoice->status !== 'Unpaid')
             return array('status' => 'skipped', 'why' => 'factuur ' . $invoice->status);
+        if (!in_array($invoice->paymentmethod, array('molliesubscribecard_devapp', 'molliesubscribesepa_devapp'), true))
+            return array('status' => 'skipped', 'why' => 'factuur heeft geen inningsgateway (' . $invoice->paymentmethod . ')');
 
         $pm = Capsule::table('tblpaymethods')->where('userid', $invoice->userid)->whereNull('deleted_at')->orderBy('id', 'desc')->first();
         if (!$pm)

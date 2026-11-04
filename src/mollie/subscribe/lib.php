@@ -591,7 +591,25 @@ function mollie_subscribe_store_mandate($mollie, $row, $payment)
     }
 
     mollie_subscribe_update_row($row->id, array('mandateid' => $mandate->id, 'paymethod_created' => 1));
+    mollie_subscribe_make_default($row->userid, $row->gateway);
     mollie_subscribe_activity('betaalmethode bewaard (' . $method . ', ' . $mandate->id . ')', (int) $row->userid);
+}
+
+/**
+ * De cron int enkel facturen met een inningsgateway als betaalmethode. Na een nieuw mandaat:
+ * standaardgateway van de klant en de open facturen op deze gateway zetten.
+ */
+function mollie_subscribe_make_default($userId, $gateway)
+{
+    $result = function_exists('localAPI') ? localAPI('UpdateClient', array('clientid' => (int) $userId, 'paymentmethod' => $gateway)) : array('result' => 'error');
+
+    if (!isset($result['result']) || $result['result'] !== 'success')
+        Capsule::table('tblclients')->where('id', (int) $userId)->update(array('defaultgateway' => $gateway));
+
+    $count = Capsule::table('tblinvoices')->where('userid', (int) $userId)->where('status', 'Unpaid')->where('paymentmethod', '!=', $gateway)->update(array('paymentmethod' => $gateway));
+
+    if ($count)
+        mollie_subscribe_activity($count . ' open facturen op ' . $gateway . ' gezet', (int) $userId);
 }
 
 function mollie_subscribe_client_language($userId)

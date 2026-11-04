@@ -54,7 +54,9 @@ function invoice($userId, $total = '121.00', $status = 'Unpaid')
 {
     static $n = 0;
     $n++;
-    return Capsule::table('tblinvoices')->insertGetId(array('userid' => $userId, 'invoicenum' => 'TEST-' . $n, 'total' => $total, 'status' => $status, 'duedate' => date('Y-m-d')));
+    // zoals WHMCS: nieuwe factuur krijgt de standaardgateway van de klant
+    $gateway = Capsule::table('tblclients')->where('id', $userId)->value('defaultgateway') ?: 'molliecheckout_devapp';
+    return Capsule::table('tblinvoices')->insertGetId(array('userid' => $userId, 'invoicenum' => 'TEST-' . $n, 'total' => $total, 'status' => $status, 'duedate' => date('Y-m-d'), 'paymentmethod' => $gateway));
 }
 
 function inv($id) { return Capsule::table('tblinvoices')->where('id', $id)->first(); }
@@ -490,6 +492,18 @@ scenario('24 Cron tijdens open checkout voor dezelfde factuur: wacht, int niet',
     mollie_subscribe_handle_webhook(array('id' => $row->paymentid));
     $res2 = test_cron_capture($iid);
     check($res2['status'] === 'pending' && recurring_count($fake) === 1, 'na verlopen checkout: gewone inning');
+});
+
+scenario('25 Na een nieuw mandaat: standaardgateway en open facturen op automatisch', function ($fake) {
+    $uid = client();
+    $old = invoice($uid, '30.00'); // nog op Mollie Checkout
+    check(test_cron_capture($old)['status'] === 'skipped', 'voor het mandaat: cron laat de factuur met Mollie Checkout liggen');
+    add_method($fake, SEPA, $uid);
+    check(Capsule::table('tblclients')->where('id', $uid)->value('defaultgateway') === SEPA, 'standaardgateway klant = domiciliëring');
+    check(inv($old)->paymentmethod === SEPA, 'open factuur omgezet naar domiciliëring');
+    check(test_cron_capture($old)['status'] === 'pending', 'cron int de oude open factuur');
+    $new = invoice($uid, '30.00');
+    check(inv($new)->paymentmethod === SEPA, 'nieuwe factuur krijgt meteen domiciliëring');
 });
 
 /* ---------- uitkomst ---------- */
