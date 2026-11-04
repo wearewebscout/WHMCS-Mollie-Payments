@@ -148,7 +148,7 @@ scenario('03 SEPA via Bancontact tijdens betaling factuur: factuur betaald, bank
     $r = add_method($fake, SEPA, $uid, $iid, 'bancontact');
     $first = $fake->payments[$r['row']->paymentid];
     check($first['amount']['value'] === '99.22', 'eerste betaling = saldo factuur');
-    check($first['allowedMethods'] === array('bancontact', 'ideal', 'belfius', 'kbc'), 'methodes bancontact, ideal, belfius, kbc');
+    check($first['allowedMethods'] === array('bancontact', 'ideal'), 'methodes bancontact, ideal');
     check($first['locale'] === 'en_NL', 'locale en_NL');
     check(inv($iid)->status === 'Paid', 'factuur Paid');
     check(count(bookings($iid)) === 1 && bookings($iid)[0]->transid === $r['row']->paymentid, '1 boeking met Mollie-id');

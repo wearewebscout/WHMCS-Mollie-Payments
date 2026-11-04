@@ -24,7 +24,7 @@ function molliesubscribesepa_devapp_MetaData()
 
 function molliesubscribesepa_devapp_config()
 {
-    return mollie_subscribe_config('Mollie automatisch (domiciliëring)', 'bancontact,ideal,belfius,kbc');
+    return mollie_subscribe_config('Mollie automatisch (domiciliëring)', 'bancontact,ideal');
 }
 
 function molliesubscribesepa_devapp_nolocalcc()

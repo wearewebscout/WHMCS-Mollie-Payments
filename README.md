@@ -31,7 +31,7 @@ Versie van de fork: `MOLLIE_WS_VERSION` in `src/mollie/mollie.php` (nu 1.1.0).
 | Gateway | WHMCS-type | Eerste betaling | Mandaat |
 |---|---|---|---|
 | `molliesubscribecard_devapp` (Mollie automatisch, kaart) | kaart | creditcard | creditcard |
-| `molliesubscribesepa_devapp` (Mollie automatisch, domiciliëring) | Bank | bancontact, ideal, belfius, kbc | directdebit (SEPA) |
+| `molliesubscribesepa_devapp` (Mollie automatisch, domiciliëring) | Bank | bancontact, ideal (Belfius en KBC kunnen erbij als ze in Mollie aan staan) | directdebit (SEPA) |
 
 - Logica in `src/mollie/subscribe/lib.php`, eindpunten `start.php` (eerste betaling, uit de iframe naar Mollie), `return.php` (klant terug van Mollie) en `webhook.php`.
 - Hooks in `src/mollie/subscribe/hooks.php` (InvoicePaid en DailyCronJob), in te laden via `includes/hooks/mollie_subscribe.php` met 1 regel: `<?php require_once ROOTDIR . '/modules/gateways/mollie/subscribe/hooks.php';`

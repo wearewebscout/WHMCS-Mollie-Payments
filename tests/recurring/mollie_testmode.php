@@ -29,7 +29,7 @@ $first = $mollie->payments->create(array(
     'amount' => array('currency' => 'EUR', 'value' => '0.01'),
     'customerId' => $customer->id,
     'sequenceType' => 'first',
-    'method' => array('bancontact', 'ideal', 'belfius', 'kbc'),
+    'method' => array('bancontact', 'ideal'),
     'description' => 'Webscout betaalmethode bevestigen (rooktest)',
     'locale' => 'nl_BE',
     'redirectUrl' => 'https://example.org/return',

@@ -40,7 +40,7 @@ Uitkomst: OK
 Uitkomst: OK
 
 - [x] eerste betaling = saldo factuur
-- [x] methodes bancontact, ideal, belfius, kbc
+- [x] methodes bancontact, ideal
 - [x] locale en_NL
 - [x] factuur Paid
 - [x] 1 boeking met Mollie-id

@@ -83,7 +83,7 @@ namespace {
         $s->create('tblgatewaylog', function ($t) { $t->increments('id'); $t->string('gateway'); $t->text('data'); $t->string('result'); });
         $s->create('tblpaymentgateways', function ($t) { $t->string('gateway'); $t->string('setting'); $t->text('value')->nullable(); });
 
-        foreach (array('molliesubscribecard_devapp' => 'creditcard', 'molliesubscribesepa_devapp' => 'bancontact,ideal,belfius,kbc') as $gw => $methods) {
+        foreach (array('molliesubscribecard_devapp' => 'creditcard', 'molliesubscribesepa_devapp' => 'bancontact,ideal') as $gw => $methods) {
             foreach (array('type' => $gw === 'molliesubscribesepa_devapp' ? 'Bank' : 'CC', 'key' => 'test_fakefakefakefakefakefakefakefake', 'firstMethods' => $methods, 'verifyAmount' => '0.01', 'invalidateOnFailure' => 'on', 'refundDoublePayment' => 'on') as $k => $v)
                 Capsule::table('tblpaymentgateways')->insert(array('gateway' => $gw, 'setting' => $k, 'value' => $v));
         }
