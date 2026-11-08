@@ -1,6 +1,6 @@
 # Testlijst Mollie Recurring (1.1.0)
 
-Gedraaid op 4 nov 2026 met `tests/recurring/run.sh`: nagebootste WHMCS (SQLite, stubs volgens de WHMCS-docs) en een nagebootste Mollie-API achter de echte mollie-api-php 3.15.0. Uitkomst: **25/25 gevallen OK**, 129 controles.
+Gedraaid op 4 nov 2026 met `tests/recurring/run.sh`: nagebootste WHMCS (SQLite, stubs volgens de WHMCS-docs) en een nagebootste Mollie-API achter de echte mollie-api-php 3.15.0. Uitkomst: **25/25 gevallen OK**, 129 controles. Op 8 nov 2026 aangevuld met 4 gevallen (26 tot 29) na de test op hub-dev: **29/29 OK**.
 
 Wat deze lijst niet bewijst staat onderaan: dat moet op een echte test-WHMCS met een Mollie-testsleutel.
 
@@ -258,17 +258,34 @@ Uitkomst: OK
 - [x] cron int de oude open factuur
 - [x] nieuwe factuur krijgt meteen domiciliëring
 
-## Nog te bevestigen op een echte test-WHMCS
+## 26 tot 29: fixes na de test op hub-dev (8 nov 2026)
 
-De nabootsing volgt de WHMCS-documentatie, maar deze punten hangen af van gedrag binnen WHMCS zelf:
+Uitkomst: OK
 
-- [ ] Klantenzone > Betaalmethodes > Toevoegen toont beide gateways, de iframe stuurt door naar Mollie en na betaling staat de betaalmethode er (createCardPayMethod en createBankPayMethod met deze argumenten).
-- [ ] Factuur betalen met een nieuwe betaalmethode via beide gateways.
-- [ ] WHMCS aanvaardt `pending` uit `_capture` en de status Payment Pending (zet WHMCS die zelf, of enkel onze code?).
-- [ ] De cron "Process Credit Card Charges" slaat Payment Pending over en int een factuur pas op de ingestelde dag.
-- [ ] Betaalmethode verwijderen roept `_storeremote` met action delete op.
-- [ ] Verwijderen via `WHMCS\Payment\PayMethod\Model` na een mislukking werkt (anders weigert onze tabel de inning, maar staat de betaalmethode nog zichtbaar).
-- [ ] `paymentReversed()` met chargeback-id en de factuurstatus nadien (onze code zet Unpaid).
-- [ ] Mails Direct Debit Payment Failed, Pending en Confirmation en Credit Card Payment Failed bestaan en zijn in het NL en EN aangepast.
-- [ ] Hookbestand `includes/hooks/mollie_subscribe.php` laadt, InvoicePaid annuleert een lopende domiciliëring, DailyCronJob draait.
-- [ ] `tests/recurring/mollie_testmode.php` met de testsleutel geeft OK (payloads aanvaard door Mollie).
+- [x] 26 Lege of foute instelling methodes eerste betaling: kaart altijd creditcard, domiciliëring zonder kaart (1.1.1)
+- [x] 27 Iframe laden maakt nog niets bij Mollie: eerst gateway kiezen, dan Ga verder naar Mollie (1.1.2)
+- [x] 28 Bevestiging domiciliëring minstens 0,02 (minimum Bancontact), kaart 0,01 (1.1.3)
+- [x] 29 Factuur op domiciliëring betalen zonder bewaarde rekening: eigen knop naar Mollie op de betaalpagina (1.1.4)
+
+## Bevestigd op de echte test-WHMCS hub-dev (8 nov 2026)
+
+WHMCS 9.0.8 op `hub-dev.webscout.eu` (Combell, ontwikkellicentie), Mollie-testsleutel "hub-dev Test", testklanten op test@webscout.be. De klikken in de checkout van Mollie (testkaart, Bancontact Betaald) deed Jens. Opzet en opruimen: handboekartikel `mod-mollie`, deel Testomgeving hub-dev.
+
+- [x] **1. Betaalmethode toevoegen in de klantenzone.** Beide gateways staan bij Betaalmethodes > Toevoegen. Kaart: testkaart, mandaat `creditcard`, betaalmethode RemoteCreditCard, 0,01 teruggestort, dubbele webhook geen tweede betaalmethode. Domiciliëring: Bancontact, mandaat `directdebit`, RemoteBankAccount, 0,02 teruggestort. `createCardPayMethod` en `createBankPayMethod` aanvaard. Standaardgateway en open facturen gaan mee naar de nieuwe gateway.
+  Gevonden en opgelost: zonder opgeslagen gatewayinstellingen gaf de kaart-gateway geen methode mee en toonde Mollie alle methodes (1.1.1). WHMCS verstuurt het iframe van de eerst getoonde gateway zelf, waardoor "Add New Bank Account" meteen naar het kaartformulier ging (1.1.2). Met 0,01 toonde Mollie geen Bancontact (1.1.3).
+- [x] **2. Factuur betalen met een nieuwe betaalmethode.** Kaart: factuur 6 betaald, mandaat bewaard, 1 boeking, late webhook boekt niet dubbel, mail Credit Card Payment Confirmation. Domiciliëring: factuur 7 betaald via Bancontact, domiciliëring bewaard.
+  Gevonden en opgelost: voor een gateway van het type Bank toont WHMCS op de betaalpagina geen iframe maar eigen rekeningvelden. Hook `ClientAreaFooterOutput` toont nu een knop naar Mollie (1.1.4).
+- [x] **3. `pending` uit `_capture`.** WHMCS aanvaardt het, zet de factuur **zelf** op Payment Pending (getest met onze `mollie_subscribe_mark_pending` tijdelijk uit) en stuurt Direct Debit Payment Pending. Onze aanroep is dus dubbel, maar onschuldig.
+- [x] **4. Cron Process Credit Card Charges.** Int enkel facturen die precies over Process Days Before Due (3) vervallen: vervaldag vandaag of over 2 dagen werd overgeslagen, over 3 dagen geïnd. Facturen op Payment Pending worden overgeslagen. Met de hand gemaakte facturen int de cron nooit (WHMCS-documentatie), enkel facturen uit diensten. Kaart: meteen Paid. Domiciliëring: Payment Pending.
+- [x] **5. Betaalmethode verwijderen.** Klantenzone > Delete roept `_storeremote` met delete op ("Remote Delete Success"), mandaat ingetrokken bij Mollie. Vereist `CCAllowCustomerDelete` aan.
+- [x] **6. Verwijderen via `WHMCS\Payment\PayMethod\Model`.** Werkt: `deleted_at` gezet na de terugboeking, niet meer zichtbaar in de klantenzone.
+- [x] **7. `paymentReversed()`.** Met een nagebootste terugboeking op een echte betaalde testbetaling (Mollie maakt in testmodus geen terugboekingen): tegenboeking met het chargeback-id, factuur van Paid naar Unpaid, WHMCS zet ook de vervaldag van de dienst terug, mail Credit Card Payment Failed (onderwerp "Invoice Payment Failed"), mandaat ingetrokken. Tweede keer: "terugboeking al verwerkt".
+- [x] **8. Mails.** Direct Debit Payment Failed, Pending en Confirmation en Credit Card Payment Failed bestaan in WHMCS 9.0.8 en worden verstuurd. Nieuwe teksten NL en EN in webscout-whmcs-mail (`5ab2ec2`), nog niet op webscout.eu. Let op: WHMCS stuurt Direct Debit Payment Confirmation ook als de klant zelf anders betaalde, daarom een neutrale tekst.
+- [x] **9. Hookbestand.** `includes/hooks/mollie_subscribe.php` laadt. InvoicePaid annuleerde de lopende domiciliëring van factuur 4 bij Mollie toen die per overschrijving betaald werd. DailyCronJob draait mee met `cron.php all` ("nacontrole 3 betalingen").
+- [x] **10. `tests/recurring/mollie_testmode.php`** met de testsleutel: OK (customer, eerste betaling, mandaat, recurring pending, annuleren, intrekken, 410).
+
+Nog open, niet blokkerend:
+
+- In het gatewaylog tonen de regels van de dagelijkse nacontrole het factuur- en klant-id van de laatste cronfactuur in plaats van die van de betaling. Cosmetisch.
+- Op de pagina "Add New Bank Account" staat de kaart-gateway standaard aangevinkt (WHMCS kiest de eerste). Kan met een kleine hook.
+- Een echte terugboeking via Mollie (live) is niet te testen in testmodus.
