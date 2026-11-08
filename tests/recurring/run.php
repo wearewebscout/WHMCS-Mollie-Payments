@@ -538,6 +538,17 @@ scenario('27 Iframe laden maakt nog niets bij Mollie: eerst kiezen, dan klikken'
     check(mollie_subscribe_handle_start($post2)[0] === 403, 'geknoeid na stap 1: 403');
 });
 
+scenario('28 Bevestiging domiciliëring minstens 0,02 (minimum Bancontact), kaart 0,01', function ($fake) {
+    check(mollie_subscribe_verify_amount(SEPA, '0.01') === '0.02', 'domiciliëring 0.01 wordt 0.02');
+    check(mollie_subscribe_verify_amount(SEPA, '') === '0.02', 'domiciliëring leeg wordt 0.02');
+    check(mollie_subscribe_verify_amount(SEPA, '0.05') === '0.05', 'domiciliëring 0.05 blijft');
+    check(mollie_subscribe_verify_amount(CARD, '') === '0.01', 'kaart leeg wordt 0.01');
+    $uid = client('dutch', 'BE');
+    $r = add_method($fake, SEPA, $uid);
+    check($fake->payments[$r['row']->paymentid]['amount']['value'] === '0.02', 'eerste betaling domiciliëring zonder factuur: 0.02');
+    check(count($fake->refunds[$r['row']->paymentid] ?? array()) === 1, '0.02 teruggestort');
+});
+
 /* ---------- uitkomst ---------- */
 
 $pass = 0;

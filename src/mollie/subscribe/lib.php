@@ -65,7 +65,7 @@ function mollie_subscribe_config($friendlyName, $defaultMethods)
             'Type' => 'text',
             'Size' => '6',
             'Default' => '0.01',
-            'Description' => 'Bedrag om een betaalmethode te bevestigen zonder factuur. Wordt meteen teruggestort.',
+            'Description' => 'Bedrag om een betaalmethode te bevestigen zonder factuur. Wordt meteen teruggestort. Domiciliëring minstens 0.02 (minimum van Bancontact).',
         ),
         'invalidateOnFailure' => array(
             'FriendlyName' => 'Betaalmethode laten vervallen na mislukte inning',
@@ -393,6 +393,21 @@ function mollie_subscribe_first_methods($gateway, $setting)
 }
 
 /**
+ * Bedrag om een betaalmethode zonder factuur te bevestigen. Bancontact aanvaardt pas vanaf 0,02 euro
+ * (minimumAmount bij Mollie, gezien op hub-dev 8 nov 2026): met 0,01 toont Mollie een Belgische klant
+ * enkel iDEAL. Domiciliëring daarom minstens 0,02, kaart standaard 0,01.
+ */
+function mollie_subscribe_verify_amount($gateway, $setting)
+{
+    $amount = (float) $setting > 0 ? (float) $setting : 0.01;
+
+    if ($gateway === 'molliesubscribesepa_devapp' && $amount < 0.02)
+        $amount = 0.02;
+
+    return mollie_subscribe_amount($amount);
+}
+
+/**
  * Maakt de eerste betaling en geeft de checkout-URL terug. Opgeroepen vanuit start.php.
  *
  * @return array ['checkoutUrl' => ..., 'rowId' => ...]
@@ -419,7 +434,7 @@ function mollie_subscribe_start_first(array $gatewayParams, $gateway, array $cli
         $returnTo = 'invoice';
         $description = sprintf($lang['subscribeInvoiceDescription'], mollie_subscribe_invoice_number($invoiceId));
     } else {
-        $amount = mollie_subscribe_amount(isset($gatewayParams['verifyAmount']) && (float) $gatewayParams['verifyAmount'] > 0 ? $gatewayParams['verifyAmount'] : '0.01');
+        $amount = mollie_subscribe_verify_amount($gateway, isset($gatewayParams['verifyAmount']) ? $gatewayParams['verifyAmount'] : '');
         $returnTo = 'paymethods';
         $description = $lang['subscribeVerifyDescription'];
     }
