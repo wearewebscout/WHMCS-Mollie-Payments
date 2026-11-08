@@ -27,7 +27,7 @@ $_GATEWAYLANG['payWith'] = 'Betaal met Mollie';
 
 // Webscout: automatisch betalen (Mollie Recurring)
 $_GATEWAYLANG['subscribeContinue'] = 'Ga verder naar Mollie';
-$_GATEWAYLANG['subscribeRedirecting'] = 'Je gaat naar Mollie om je betaalmethode te bevestigen...';
+$_GATEWAYLANG['subscribeRedirecting'] = 'Je bevestigt je betaalmethode veilig bij Mollie.';
 $_GATEWAYLANG['subscribeStartFailed'] = 'Dat lukte niet. Probeer het straks opnieuw of neem contact met ons op.';
 $_GATEWAYLANG['subscribeNoUpdate'] = 'Een bewaarde betaalmethode kun je niet aanpassen. Voeg een nieuwe toe en verwijder daarna de oude.';
 $_GATEWAYLANG['subscribeInvoiceDescription'] = 'Webscout factuur %s';

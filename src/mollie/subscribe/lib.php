@@ -1317,6 +1317,22 @@ function mollie_subscribe_handle_start(array $post)
 
     $lang = mollie_subscribe_lang($client['language']);
 
+    // Stap 1: WHMCS verstuurt dit formulier zelf zodra de pagina het iframe laadt, ook voor de gateway die het
+    // eerst toont. Dan nog niets bij Mollie aanmaken en niet wegsturen, anders kan de klant geen andere gateway
+    // kiezen (gezien op hub-dev: "Add New Bank Account" ging meteen naar het kaartformulier). Enkel een knop die
+    // het hoofdvenster naar stap 2 stuurt.
+    if (empty($post['go'])) {
+        $hidden = '';
+        foreach (array_merge($fields, array('sig' => (string) $post['sig'], 'go' => '1')) as $name => $value)
+            $hidden .= '<input type="hidden" name="' . htmlspecialchars($name, ENT_QUOTES) . '" value="' . htmlspecialchars((string) $value, ENT_QUOTES) . '">';
+
+        return array(200, '<!doctype html><html><head><meta charset="utf-8"><title>Mollie</title></head><body style="font-family:sans-serif;padding:16px;margin:0">'
+            . '<form method="post" action="' . htmlspecialchars(mollie_subscribe_systemurl($gatewayParams['systemurl']) . 'modules/gateways/mollie/subscribe/start.php', ENT_QUOTES) . '" target="_top">' . $hidden
+            . '<p style="margin:0 0 12px">' . htmlspecialchars($lang['subscribeRedirecting'], ENT_QUOTES) . '</p>'
+            . '<button type="submit" style="background:#004cc6;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-weight:600;font-size:15px;cursor:pointer">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . '</button>'
+            . '</form></body></html>', null);
+    }
+
     try {
         $result = mollie_subscribe_start_first($gatewayParams, $gateway, $client, (int) $fields['invoice'], $fields['amount'], $fields['currency']);
     } catch (\Exception $e) {

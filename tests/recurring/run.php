@@ -74,6 +74,7 @@ function remote_form($gateway, $userId, $invoiceId = 0, $amount = '0.00')
     $post = array();
     foreach ($m as $f)
         $post[$f[1]] = html_entity_decode($f[2], ENT_QUOTES);
+    $post['go'] = '1'; // stap 2: de klant klikte in het iframe op Ga verder naar Mollie
     return array($html, $post);
 }
 
@@ -516,6 +517,25 @@ scenario('26 Lege of foute instelling methodes eerste betaling: kaart enkel cred
     $uid = client('dutch', 'BE');
     $r = add_method($fake, CARD, $uid);
     check($fake->payments[$r['row']->paymentid]['allowedMethods'] === 'creditcard', 'zonder opgeslagen instelling: eerste betaling kaart met method creditcard');
+});
+
+scenario('27 Iframe laden maakt nog niets bij Mollie: eerst kiezen, dan klikken', function ($fake) {
+    $uid = client('dutch', 'BE');
+    list(, $post) = remote_form(SEPA, $uid);
+    unset($post['go']);
+    $before = count($fake->payments);
+    $step1 = mollie_subscribe_handle_start($post);
+    check($step1[0] === 200, 'automatisch versturen door WHMCS: 200');
+    check(count($fake->payments) === $before, 'nog geen betaling bij Mollie');
+    check(strpos($step1[1], 'window.top') === false, 'stuurt het venster niet weg');
+    check(strpos($step1[1], 'target="_top"') !== false && strpos($step1[1], 'name="go" value="1"') !== false, 'knop naar stap 2 in het hoofdvenster');
+    preg_match_all('/name="([^"]+)" value="([^"]*)"/', $step1[1], $m, PREG_SET_ORDER);
+    $post2 = array();
+    foreach ($m as $f) $post2[$f[1]] = html_entity_decode($f[2], ENT_QUOTES);
+    $step2 = mollie_subscribe_handle_start($post2);
+    check($step2[0] === 200 && strpos($step2[1], 'window.top.location.href') !== false && count($fake->payments) === $before + 1, 'na de klik: 1 betaling en door naar Mollie');
+    $post2['amount'] = '99.00';
+    check(mollie_subscribe_handle_start($post2)[0] === 403, 'geknoeid na stap 1: 403');
 });
 
 /* ---------- uitkomst ---------- */
