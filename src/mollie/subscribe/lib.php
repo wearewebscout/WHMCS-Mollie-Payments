@@ -373,6 +373,26 @@ function mollie_subscribe_remoteupdate($params)
 }
 
 /**
+ * Methodes voor de eerste betaling. WHMCS bewaart de standaardwaarde van een gatewayveld pas als iemand de
+ * gatewayinstellingen opslaat, dus een lege instelling valt terug op de standaard van de gateway. Zonder
+ * method laat Mollie elke methode toe, en dan kan een iDEAL-betaling via de kaart-gateway een
+ * domiciliëringsmandaat als kaart bewaren (gezien op hub-dev, 8 nov 2026). Daarom:
+ * - kaart: altijd enkel creditcard, wat er ook ingevuld staat;
+ * - domiciliëring: ingevulde methodes zonder creditcard, anders bancontact en ideal.
+ */
+function mollie_subscribe_first_methods($gateway, $setting)
+{
+    if ($gateway === 'molliesubscribecard_devapp')
+        return array('creditcard');
+
+    $methods = array_values(array_filter(array_map('trim', explode(',', strtolower((string) $setting))), function ($m) {
+        return $m !== '' && $m !== 'creditcard';
+    }));
+
+    return $methods ? $methods : array('bancontact', 'ideal');
+}
+
+/**
  * Maakt de eerste betaling en geeft de checkout-URL terug. Opgeroepen vanuit start.php.
  *
  * @return array ['checkoutUrl' => ..., 'rowId' => ...]
@@ -405,7 +425,7 @@ function mollie_subscribe_start_first(array $gatewayParams, $gateway, array $cli
     }
 
     $customerId = mollie_subscribe_customer($mollie, $apiKey, $client);
-    $methods = array_values(array_filter(array_map('trim', explode(',', (string) $gatewayParams['firstMethods']))));
+    $methods = mollie_subscribe_first_methods($gateway, isset($gatewayParams['firstMethods']) ? $gatewayParams['firstMethods'] : '');
 
     $rowId = Capsule::table(MOLLIE_SUBSCRIBE_TABLE_PAYMENTS)->insertGetId(array(
         'userid' => $userId,

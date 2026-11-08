@@ -506,6 +506,18 @@ scenario('25 Na een nieuw mandaat: standaardgateway en open facturen op automati
     check(inv($new)->paymentmethod === SEPA, 'nieuwe factuur krijgt meteen domiciliëring');
 });
 
+scenario('26 Lege of foute instelling methodes eerste betaling: kaart enkel creditcard, domiciliëring zonder kaart', function ($fake) {
+    check(mollie_subscribe_first_methods(CARD, '') === array('creditcard'), 'kaart, leeg: creditcard');
+    check(mollie_subscribe_first_methods(CARD, 'ideal,bancontact') === array('creditcard'), 'kaart, iDEAL ingevuld: toch creditcard');
+    check(mollie_subscribe_first_methods(SEPA, '') === array('bancontact', 'ideal'), 'domiciliëring, leeg: bancontact, ideal');
+    check(mollie_subscribe_first_methods(SEPA, ' Bancontact , creditcard,kbc') === array('bancontact', 'kbc'), 'domiciliëring: creditcard eruit, rest blijft');
+    check(mollie_subscribe_first_methods(SEPA, 'creditcard') === array('bancontact', 'ideal'), 'domiciliëring, enkel creditcard: terug naar standaard');
+    Capsule::table('tblpaymentgateways')->where('setting', 'firstMethods')->delete();
+    $uid = client('dutch', 'BE');
+    $r = add_method($fake, CARD, $uid);
+    check($fake->payments[$r['row']->paymentid]['allowedMethods'] === 'creditcard', 'zonder opgeslagen instelling: eerste betaling kaart met method creditcard');
+});
+
 /* ---------- uitkomst ---------- */
 
 $pass = 0;
