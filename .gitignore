@@ -1,2 +1,5 @@
 .idea/
 src/mollie/vendor/
+tests/recurring/vendor/
+tests/recurring/root/
+tests/recurring/composer.lock
