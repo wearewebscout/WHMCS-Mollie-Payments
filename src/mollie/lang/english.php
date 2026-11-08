@@ -26,6 +26,7 @@ $_GATEWAYLANG['payWithApplepay'] = 'Pay with Apple Pay';
 $_GATEWAYLANG['payWith'] = 'Pay with Mollie';
 
 // Webscout: automatic payments (Mollie Recurring)
+$_GATEWAYLANG['subscribeInvoiceIntro'] = 'You pay this invoice at Mollie with Bancontact or iDEAL. This also confirms the direct debit, so future invoices are paid automatically.';
 $_GATEWAYLANG['subscribeContinue'] = 'Continue to Mollie';
 $_GATEWAYLANG['subscribeRedirecting'] = 'You confirm your payment method securely with Mollie.';
 $_GATEWAYLANG['subscribeStartFailed'] = 'That did not work. Please try again later or contact us.';

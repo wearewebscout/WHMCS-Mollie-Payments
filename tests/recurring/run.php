@@ -549,6 +549,30 @@ scenario('28 Bevestiging domiciliëring minstens 0,02 (minimum Bancontact), kaar
     check(count($fake->refunds[$r['row']->paymentid] ?? array()) === 1, '0.02 teruggestort');
 });
 
+scenario('29 Factuur op domiciliëring betalen zonder bewaarde rekening: eigen knop naar Mollie op de betaalpagina', function ($fake) {
+    $uid = client('dutch', 'BE');
+    $iid = invoice($uid, '24.20');
+    Capsule::table('tblinvoices')->where('id', $iid)->update(array('paymentmethod' => SEPA));
+    $html = mollie_subscribe_invoice_pay_output('/invoice/' . $iid . '/pay', $uid);
+    check(strpos($html, 'frmPayment') !== false && strpos($html, '.bank-details') !== false, 'verbergt de rekeningvelden van WHMCS');
+    check(mollie_subscribe_invoice_pay_output('/invoice/' . $iid . '/pay', $uid + 1) === '', 'andere klant: niets');
+    check(mollie_subscribe_invoice_pay_output('/invoice/' . $iid, $uid) === '', 'andere pagina: niets');
+    preg_match_all('/name="([^"]+)" value="([^"]*)"/', $html, $m, PREG_SET_ORDER);
+    $post = array();
+    foreach ($m as $f) $post[$f[1]] = html_entity_decode($f[2], ENT_QUOTES);
+    check($post['go'] === '1' && $post['amount'] === '24.20' && (int) $post['invoice'] === $iid, 'formulier: saldo van de factuur, meteen stap 2');
+    $r = mollie_subscribe_handle_start($post);
+    check($r[0] === 200 && strpos($r[1], 'window.top.location.href') !== false, 'start maakt de betaling en stuurt door');
+    $row = mollie_subscribe_payment_row($r[2]['rowId']);
+    $fake->completeCheckout($row->paymentid, 'bancontact', array());
+    mollie_subscribe_handle_webhook(array('id' => $row->paymentid));
+    check(inv($iid)->status === 'Paid', 'factuur Paid');
+    $pms = paymethods($uid);
+    check(count($pms) === 1 && $pms[0]->type === 'RemoteBankAccount', 'domiciliëring bewaard');
+    Capsule::table('tblinvoices')->where('id', $iid)->update(array('status' => 'Paid'));
+    check(mollie_subscribe_invoice_pay_output('/invoice/' . $iid . '/pay', $uid) === '', 'betaalde factuur: niets');
+});
+
 /* ---------- uitkomst ---------- */
 
 $pass = 0;

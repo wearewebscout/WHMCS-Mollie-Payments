@@ -4,7 +4,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 // Webscout: versie van onze fork, bij elke wijziging ophogen
 if (!defined('MOLLIE_WS_VERSION'))
-    define('MOLLIE_WS_VERSION', '1.1.3');
+    define('MOLLIE_WS_VERSION', '1.1.4');
 
 function mollie_config()
 {

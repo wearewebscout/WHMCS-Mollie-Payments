@@ -6,6 +6,8 @@
  *
  * - InvoicePaid: lopende SEPA-inning annuleren als de klant de factuur intussen anders betaalde.
  * - DailyCronJob: nacontrole voor gemiste webhooks en late terugboekingen.
+ * - ClientAreaFooterOutput: op de betaalpagina van een factuur op domiciliëring een knop naar Mollie in plaats van
+ *   de rekeningvelden van WHMCS (WHMCS toont daar geen remote input voor een gateway van het type Bank).
  */
 
 if (!defined('WHMCS'))
@@ -53,5 +55,26 @@ add_hook('DailyCronJob', 1, function ($vars) {
             mollie_subscribe_activity('nacontrole ' . count($result) . ' betalingen');
     } catch (\Exception $e) {
         mollie_subscribe_activity('nacontrole: ' . $e->getMessage());
+    }
+});
+
+add_hook('ClientAreaFooterOutput', 1, function ($vars) {
+    if (!isset($_GET['rp']) || strpos((string) $_GET['rp'], '/invoice/') !== 0 || !mollie_subscribe_hook_boot())
+        return '';
+
+    try {
+        $userId = 0;
+        if (class_exists('\\WHMCS\\Authentication\\CurrentUser')) {
+            $current = new \WHMCS\Authentication\CurrentUser();
+            $client = $current->client();
+            $userId = $client ? (int) $client->id : 0;
+        }
+        if (!$userId && isset($_SESSION['uid']))
+            $userId = (int) $_SESSION['uid'];
+
+        return mollie_subscribe_invoice_pay_output((string) $_GET['rp'], $userId);
+    } catch (\Exception $e) {
+        mollie_subscribe_activity('hook betaalpagina: ' . $e->getMessage());
+        return '';
     }
 });

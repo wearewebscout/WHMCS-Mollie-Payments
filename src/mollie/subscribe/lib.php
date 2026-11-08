@@ -363,6 +363,67 @@ function mollie_subscribe_remoteinput($params, $gateway)
 }
 
 /**
+ * Betaalpagina van een factuur (index.php?rp=/invoice/{id}/pay) op de domiciliërings-gateway. WHMCS toont voor
+ * een gateway van het type Bank geen remote input, enkel zijn eigen velden voor een rekening, waarmee Mollie geen
+ * mandaat kan maken (gezien op hub-dev, 8 nov 2026). Deze uitvoer komt via ClientAreaFooterOutput onder de pagina:
+ * zolang "nieuwe bankrekening" gekozen is, verbergt ze die velden en de knop van WHMCS en toont ze een eigen
+ * formulier naar start.php (stap 2, betaling van het saldo van de factuur). Een bewaarde rekening blijft gewoon werken.
+ *
+ * @return string HTML, of '' als het niet van toepassing is
+ */
+function mollie_subscribe_invoice_pay_output($route, $userId)
+{
+    $gateway = 'molliesubscribesepa_devapp';
+
+    if ($userId <= 0 || !preg_match('#^/invoice/(\d+)/pay$#', (string) $route, $m))
+        return '';
+
+    $invoiceId = (int) $m[1];
+    $invoice = Capsule::table('tblinvoices')->where('id', $invoiceId)->where('userid', (int) $userId)->first();
+
+    if (!$invoice || $invoice->status !== 'Unpaid' || $invoice->paymentmethod !== $gateway)
+        return '';
+
+    $gatewayParams = getGatewayVariables($gateway);
+
+    if (empty($gatewayParams['key']))
+        return '';
+
+    $client = mollie_subscribe_client_details((int) $userId);
+    $lang = mollie_subscribe_lang(isset($client['language']) ? $client['language'] : '');
+    $currency = function_exists('getCurrency') ? getCurrency((int) $userId) : null;
+    $currency = is_array($currency) && !empty($currency['code']) ? $currency['code'] : 'EUR';
+    $fields = array(
+        'gateway' => $gateway,
+        'client' => (int) $userId,
+        'invoice' => $invoiceId,
+        'amount' => mollie_subscribe_amount(mollie_subscribe_invoice_balance($invoiceId)),
+        'currency' => (string) $currency,
+        'ts' => time(),
+    );
+    $fields['sig'] = mollie_subscribe_sign($fields, $gatewayParams['key']);
+    $fields['go'] = '1';
+
+    $hidden = '';
+    foreach ($fields as $name => $value)
+        $hidden .= '<input type="hidden" name="' . htmlspecialchars($name, ENT_QUOTES) . '" value="' . htmlspecialchars((string) $value, ENT_QUOTES) . '">';
+
+    $action = mollie_subscribe_systemurl($gatewayParams['systemurl']) . 'modules/gateways/mollie/subscribe/start.php';
+
+    return '<div id="wsMollieSepaPay" style="display:none;margin:16px 0">'
+        . '<form method="post" action="' . htmlspecialchars($action, ENT_QUOTES) . '">' . $hidden
+        . '<p>' . htmlspecialchars($lang['subscribeInvoiceIntro'], ENT_QUOTES) . '</p>'
+        . '<button type="submit" class="btn btn-primary">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . '</button>'
+        . '</form></div>'
+        . '<script>(function(){var f=document.getElementById("frmPayment"),box=document.getElementById("wsMollieSepaPay");if(!f||!box)return;'
+        . 'f.parentNode.insertBefore(box,f.nextSibling);'
+        . 'function upd(){var r=f.querySelector("input[name=paymethod]:checked"),isNew=!r||r.value==="new";'
+        . 'f.querySelectorAll(".bank-details,#billingAddressChoice,#btnSubmit").forEach(function(e){e.style.display=isNew?"none":"";});'
+        . 'box.style.display=isNew?"":"none";}'
+        . 'f.addEventListener("change",upd);upd();})();</script>';
+}
+
+/**
  * Mandaten kun je bij Mollie niet aanpassen: de klant voegt een nieuwe betaalmethode toe.
  */
 function mollie_subscribe_remoteupdate($params)
