@@ -410,13 +410,14 @@ function mollie_subscribe_invoice_pay_output($route, $userId)
 
     $action = mollie_subscribe_systemurl($gatewayParams['systemurl']) . 'modules/gateways/mollie/subscribe/start.php';
 
-    return '<div id="wsMollieSepaPay" style="display:none;margin:16px 0">'
-        . '<form method="post" action="' . htmlspecialchars($action, ENT_QUOTES) . '">' . $hidden
+    // Het formulier staat buiten frmPayment (geen geneste formulieren), tekst en knop komen in het vak van WHMCS.
+    return '<form id="wsMollieSepaForm" method="post" action="' . htmlspecialchars($action, ENT_QUOTES) . '" style="display:none">' . $hidden . '</form>'
+        . '<div id="wsMollieSepaPay" class="form-group row" style="display:none"><div class="col-sm-8 offset-sm-4 col-md-8 offset-md-4">'
         . '<p>' . htmlspecialchars($lang['subscribeInvoiceIntro'], ENT_QUOTES) . '</p>'
-        . '<button type="submit" class="btn btn-primary">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . '</button>'
-        . '</form></div>'
+        . '<button type="button" class="btn btn-primary" onclick="document.getElementById(\'wsMollieSepaForm\').submit()">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . '</button>'
+        . '</div></div>'
         . '<script>(function(){var f=document.getElementById("frmPayment"),box=document.getElementById("wsMollieSepaPay");if(!f||!box)return;'
-        . 'f.parentNode.insertBefore(box,f.nextSibling);'
+        . 'var pm=f.querySelector("input[name=paymethod]"),row=pm&&pm.closest(".form-group");if(row)row.parentNode.insertBefore(box,row.nextSibling);else f.insertBefore(box,f.firstChild);'
         . 'function upd(){var r=f.querySelector("input[name=paymethod]:checked"),isNew=!r||r.value==="new";'
         . 'f.querySelectorAll(".bank-details,#billingAddressChoice,#btnSubmit").forEach(function(e){e.style.display=isNew?"none":"";});'
         . 'box.style.display=isNew?"":"none";}'

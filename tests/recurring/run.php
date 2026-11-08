@@ -554,7 +554,7 @@ scenario('29 Factuur op domiciliëring betalen zonder bewaarde rekening: eigen k
     $iid = invoice($uid, '24.20');
     Capsule::table('tblinvoices')->where('id', $iid)->update(array('paymentmethod' => SEPA));
     $html = mollie_subscribe_invoice_pay_output('/invoice/' . $iid . '/pay', $uid);
-    check(strpos($html, 'frmPayment') !== false && strpos($html, '.bank-details') !== false, 'verbergt de rekeningvelden van WHMCS');
+    check(strpos($html, 'frmPayment') !== false && strpos($html, 'wsMollieSepaForm') !== false && strpos($html, '.bank-details') !== false, 'verbergt de rekeningvelden van WHMCS');
     check(mollie_subscribe_invoice_pay_output('/invoice/' . $iid . '/pay', $uid + 1) === '', 'andere klant: niets');
     check(mollie_subscribe_invoice_pay_output('/invoice/' . $iid, $uid) === '', 'andere pagina: niets');
     preg_match_all('/name="([^"]+)" value="([^"]*)"/', $html, $m, PREG_SET_ORDER);
