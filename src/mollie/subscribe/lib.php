@@ -1365,6 +1365,45 @@ function mollie_subscribe_client_details($userId)
 }
 
 /**
+ * Kleine HTML-pagina van de module in de huisstijl van Webscout (lettertype, kleuren, pilknop), ook in donkere modus.
+ * In het iframe van WHMCS ($frame): transparante achtergrond, geen marge, en het iframe krijgt de hoogte van de
+ * inhoud (WHMCS zet het op 600 px hoog en 90% breed). Donker volgt het systeem, of de keuze van de klant op de site
+ * zelf (data-theme op <html> van het hoofdvenster, zelfde domein).
+ */
+function mollie_subscribe_page($body, $frame = true, $head = '')
+{
+    $css = ':root{--ink:#182238;--muted:#56657f;--blue:#004cc6;--blue-hover:#06245b;--bg:#f8f6f0}'
+        . ':root[data-theme=dark]{--ink:#e7ecf5;--muted:#a5b1c6;--blue:#2f6fdc;--blue-hover:#245fc4;--bg:#0e1422}'
+        . '@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--ink:#e7ecf5;--muted:#a5b1c6;--blue:#2f6fdc;--blue-hover:#245fc4;--bg:#0e1422;color-scheme:dark}}'
+        . 'html,body{margin:0;padding:0}'
+        . 'body{font-family:"mundial","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.6;color:var(--ink);-webkit-font-smoothing:antialiased;'
+        . ($frame ? 'background:transparent;padding:4px 4px 8px' : 'background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box') . '}'
+        . 'p{margin:0 0 14px}.ws-note{display:flex;gap:.6rem;align-items:flex-start;color:var(--ink)}.ws-note svg{flex:none;margin-top:.2rem;color:var(--blue)}'
+        . '.ws-sub{color:var(--muted);font-size:.9rem;margin:-6px 0 16px}'
+        . '.ws-btn,a.ws-btn{display:inline-flex;align-items:center;gap:.5rem;background:var(--blue);color:#fff;border:0;border-radius:999px;padding:.7rem 1.4rem;font:inherit;font-weight:600;line-height:1.2;cursor:pointer;text-decoration:none;transition:background .2s}'
+        . '.ws-btn:hover,.ws-btn:focus-visible{background:var(--blue-hover)}.ws-btn:focus-visible{outline:3px solid #459aff;outline-offset:2px}'
+        . 'a{color:var(--blue)}';
+    // In het iframe altijd de weergave van het hoofdvenster (zonder keuze daar: licht), en ook zijn color-scheme:
+    // verschilt die, dan tekent de browser het iframe met een effen vlak in plaats van doorzichtig.
+    $js = '<script>(function(){if(window.parent===window)return;var d=document.documentElement;try{var pd=window.parent.document.documentElement;'
+        . 'd.setAttribute("data-theme",pd.getAttribute("data-theme")==="dark"?"dark":"light");d.style.colorScheme=window.parent.getComputedStyle(pd).colorScheme||"normal";}'
+        . 'catch(e){d.setAttribute("data-theme","light");}})();</script>';
+    $fit = $frame
+        ? '<script>(function(){var f;try{f=window.frameElement;}catch(e){}if(!f)return;f.style.width="100%";f.style.border="0";f.style.display="block";f.setAttribute("scrolling","no");'
+            . 'function fit(){var h=Math.ceil(document.body.getBoundingClientRect().height);if(h>0)f.style.height=h+"px";}fit();window.addEventListener("load",fit);if(window.ResizeObserver)new ResizeObserver(fit).observe(document.body);})();</script>'
+        : '';
+
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mollie</title>'
+        . $head . $js . '<style>' . $css . '</style></head><body>' . $body . $fit . '</body></html>';
+}
+
+/** Slotje voor de tekst in het iframe. */
+function mollie_subscribe_lock_icon()
+{
+    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+}
+
+/**
  * start.php: formulier uit _remoteinput controleren, eerste betaling maken en de klant
  * (uit de iframe) naar Mollie sturen.
  */
@@ -1403,11 +1442,10 @@ function mollie_subscribe_handle_start(array $post)
         foreach (array_merge($fields, array('sig' => (string) $post['sig'], 'go' => '1')) as $name => $value)
             $hidden .= '<input type="hidden" name="' . htmlspecialchars($name, ENT_QUOTES) . '" value="' . htmlspecialchars((string) $value, ENT_QUOTES) . '">';
 
-        return array(200, '<!doctype html><html><head><meta charset="utf-8"><title>Mollie</title></head><body style="font-family:sans-serif;padding:16px;margin:0">'
-            . '<form method="post" action="' . htmlspecialchars(mollie_subscribe_systemurl($gatewayParams['systemurl']) . 'modules/gateways/mollie/subscribe/start.php', ENT_QUOTES) . '" target="_top">' . $hidden
-            . '<p style="margin:0 0 12px">' . htmlspecialchars($lang['subscribeRedirecting'], ENT_QUOTES) . '</p>'
-            . '<button type="submit" style="background:#004cc6;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-weight:600;font-size:15px;cursor:pointer">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . '</button>'
-            . '</form></body></html>', null);
+        return array(200, mollie_subscribe_page('<form method="post" action="' . htmlspecialchars(mollie_subscribe_systemurl($gatewayParams['systemurl']) . 'modules/gateways/mollie/subscribe/start.php', ENT_QUOTES) . '" target="_top">' . $hidden
+            . '<p class="ws-note">' . mollie_subscribe_lock_icon() . '<span>' . htmlspecialchars($lang['subscribeRedirecting'], ENT_QUOTES) . '</span></p>'
+            . '<button type="submit" class="ws-btn">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . ' <span aria-hidden="true">&rarr;</span></button>'
+            . '</form>'), null);
     }
 
     try {
@@ -1415,16 +1453,15 @@ function mollie_subscribe_handle_start(array $post)
     } catch (\Exception $e) {
         mollie_subscribe_log($gateway, array('client' => $client['id'], 'invoice' => $fields['invoice'], 'error' => $e->getMessage()), 'Eerste betaling mislukt');
 
-        return array(500, '<p>' . htmlspecialchars($lang['subscribeStartFailed'], ENT_QUOTES) . '</p>');
+        return array(500, mollie_subscribe_page('<p>' . htmlspecialchars($lang['subscribeStartFailed'], ENT_QUOTES) . '</p>'));
     }
 
     $url = htmlspecialchars($result['checkoutUrl'], ENT_QUOTES);
     $json = json_encode($result['checkoutUrl'], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
-    return array(200, '<!doctype html><html><head><meta charset="utf-8"><title>Mollie</title></head><body style="font-family:sans-serif;text-align:center;padding:24px">'
-        . '<p>' . htmlspecialchars($lang['subscribeRedirecting'], ENT_QUOTES) . '</p>'
-        . '<p><a href="' . $url . '" target="_top">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . '</a></p>'
-        . '<script>window.top.location.href = ' . $json . ';</script></body></html>', $result);
+    return array(200, mollie_subscribe_page('<p>' . htmlspecialchars($lang['subscribeRedirecting'], ENT_QUOTES) . '</p>'
+        . '<p><a class="ws-btn" href="' . $url . '" target="_top">' . htmlspecialchars($lang['subscribeContinue'], ENT_QUOTES) . '</a></p>'
+        . '<script>window.top.location.href = ' . $json . ';</script>'), $result);
 }
 
 /**
@@ -1466,8 +1503,8 @@ function mollie_subscribe_handle_return(array $get)
         if ($attempt < 15) {
             $next = $systemUrl . 'modules/gateways/mollie/subscribe/return.php?' . http_build_query(array('row' => $rowId, 'sig' => $get['sig'], 'try' => $attempt + 1));
 
-            return array(200, '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="2;url=' . htmlspecialchars($next, ENT_QUOTES) . '"><title>Mollie</title></head>'
-                . '<body style="font-family:sans-serif;text-align:center;padding:24px"><p>' . htmlspecialchars($lang['checkPayment'], ENT_QUOTES) . '</p></body></html>', null);
+            return array(200, mollie_subscribe_page('<div><p>' . htmlspecialchars($lang['checkPayment'], ENT_QUOTES) . '</p></div>', false,
+                '<meta http-equiv="refresh" content="2;url=' . htmlspecialchars($next, ENT_QUOTES) . '">'), null);
         }
     }
 
