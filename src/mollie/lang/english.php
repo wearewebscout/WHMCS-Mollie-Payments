@@ -8,7 +8,7 @@ $_GATEWAYLANG['errorTransactionNotFound'] = 'Transaction is not found. Please tr
 
 $_GATEWAYLANG['checkPayment'] = 'Checking your payment, please wait...';
 
-$_GATEWAYLANG['payWithBanktransfer'] = 'Pay with Bank Transfer';
+$_GATEWAYLANG['payWithBanktransfer'] = 'Show bank transfer details';
 $_GATEWAYLANG['payWithBelfius'] = 'Pay with Belfius';
 $_GATEWAYLANG['payWithCreditcard'] = 'Pay with Credit Card';
 $_GATEWAYLANG['payWithIdeal'] = 'Pay with iDeal';
@@ -39,3 +39,14 @@ $_GATEWAYLANG['subscribeNoMandate'] = 'Your saved payment method is no longer va
 $_GATEWAYLANG['subscribeCardExpired'] = 'Your saved card has expired. Please choose a new payment method.';
 $_GATEWAYLANG['subscribeFailed'] = 'The automatic payment failed. Please choose a new payment method or pay the invoice yourself.';
 $_GATEWAYLANG['subscribeTryLater'] = 'The payment could not be started right now. We will try again later.';
+
+// Webscout: overschrijvingsgegevens op de factuur
+$_GATEWAYLANG['btIntro'] = 'Transfer the amount using these details. Use the structured reference so we can process your payment automatically.';
+$_GATEWAYLANG['btBeneficiary'] = 'Beneficiary';
+$_GATEWAYLANG['btIban'] = 'IBAN';
+$_GATEWAYLANG['btBic'] = 'BIC';
+$_GATEWAYLANG['btAmount'] = 'Amount';
+$_GATEWAYLANG['btReference'] = 'Structured reference';
+$_GATEWAYLANG['btNote'] = 'We also emailed you these details. As soon as your transfer arrives, the invoice is marked as paid. This usually takes 1 to 2 business days.';
+$_GATEWAYLANG['btCopy'] = 'Copy';
+$_GATEWAYLANG['btCopied'] = 'Copied';

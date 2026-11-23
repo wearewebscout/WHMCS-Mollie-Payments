@@ -4,7 +4,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 // Webscout: versie van onze fork, bij elke wijziging ophogen
 if (!defined('MOLLIE_WS_VERSION'))
-    define('MOLLIE_WS_VERSION', '1.1.6');
+    define('MOLLIE_WS_VERSION', '1.2.0');
 
 function mollie_config()
 {
@@ -95,6 +95,12 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
             $transactionCurrency = select_query('tblcurrencies', '', array('code' => $params['currency']), null, null, 1);
             $transactionCurrency = mysql_fetch_assoc($transactionCurrency);
 
+            // Webscout: bij overschrijving een open betaling hergebruiken, de gegevens staan dan al op de factuur
+            if ($method == \Mollie\Api\Types\PaymentMethod::BANKTRANSFER && mollie_banktransfer_open_payment($mollie, $params) !== null) {
+                header('Location: ' . $params['returnurl']);
+                exit();
+            }
+
             $transactionId = insert_query('gateway_mollie', array(
                 'amount' => $params['amount'],
                 'currencyid' => $transactionCurrency['id'],
@@ -131,9 +137,22 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
 
             update_query('gateway_mollie', array('paymentid' => $payment->id), array('id' => $transactionId));
 
+            // Webscout: bij overschrijving geen Mollie-pagina (met bevestigingsstap), de factuur toont de gegevens zelf
+            if ($method == \Mollie\Api\Types\PaymentMethod::BANKTRANSFER) {
+                header('Location: ' . $params['returnurl']);
+                exit();
+            }
+
             header('Location: ' . $payment->getCheckoutUrl());
             exit();
         } else {
+            if ($method == \Mollie\Api\Types\PaymentMethod::BANKTRANSFER) {
+                $openPayment = mollie_banktransfer_open_payment($mollie, $params);
+                if ($openPayment !== null) {
+                    return mollie_banktransfer_details_html($openPayment, $params, $_GATEWAYLANG);
+                }
+            }
+
             $return = '<form action="viewinvoice.php?id=' . $params['invoiceid'] . '" method="POST">';
 
             $return .= '<input type="submit" name="start" value="' . $_GATEWAYLANG['payWith' . ucfirst($method)] . '" /></form>';
@@ -141,6 +160,80 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
             return $return;
         }
     }
+}
+
+/**
+ * Webscout: open overschrijving voor deze factuur bij Mollie, met hetzelfde bedrag en dezelfde munt.
+ *
+ * @return \Mollie\Api\Resources\Payment|null
+ */
+function mollie_banktransfer_open_payment($mollie, $params)
+{
+    $currency = mysql_fetch_assoc(select_query('tblcurrencies', 'id', array('code' => $params['currency']), null, null, 1));
+    $query = select_query('gateway_mollie', '', array(
+        'invoiceid' => $params['invoiceid'],
+        'method' => \Mollie\Api\Types\PaymentMethod::BANKTRANSFER,
+        'status' => 'open',
+    ), 'id', 'DESC', 5);
+
+    while ($row = mysql_fetch_assoc($query)) {
+        if (empty($row['paymentid']) || abs((float) $row['amount'] - (float) $params['amount']) > 0.004)
+            continue;
+        if ($currency && (int) $row['currencyid'] !== (int) $currency['id'])
+            continue;
+
+        try {
+            $payment = $mollie->payments->get($row['paymentid']);
+        } catch (\Exception $e) {
+            continue;
+        }
+
+        if ($payment->status === 'open' && !empty($payment->details->bankAccount) && !empty($payment->details->transferReference))
+            return $payment;
+    }
+
+    return null;
+}
+
+/**
+ * Webscout: overschrijvingsgegevens van Mollie op de factuurpagina, met kopieerknoppen.
+ */
+function mollie_banktransfer_details_html($payment, $params, $lang)
+{
+    $e = function ($value) {
+        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    };
+    $iban = trim(chunk_split(preg_replace('/\s+/', '', (string) $payment->details->bankAccount), 4, ' '));
+    $commaLanguages = array('dutch', 'french', 'german', 'spanish', 'italian', 'portuguese-pt');
+    $value = (float) $payment->amount->value;
+    $amount = in_array($params['language'], $commaLanguages, true) ? number_format($value, 2, ',', '.') : number_format($value, 2, '.', ',');
+    $amount = ($payment->amount->currency === 'EUR' ? '€ ' : $payment->amount->currency . ' ') . $amount;
+
+    $rows = array(
+        array($lang['btBeneficiary'], $payment->details->bankName, true),
+        array($lang['btIban'], $iban, true),
+        array($lang['btBic'], $payment->details->bankBic, true),
+        array($lang['btAmount'], $amount, false),
+        array($lang['btReference'], $payment->details->transferReference, true),
+    );
+
+    $html = '<div class="mollie-banktransfer" style="text-align:left;max-width:480px;margin:0 auto">';
+    $html .= '<p>' . $e($lang['btIntro']) . '</p>';
+    $html .= '<table class="table table-sm" style="width:100%"><tbody>';
+    foreach ($rows as $row) {
+        if ($row[1] === null || $row[1] === '')
+            continue;
+        $html .= '<tr><th style="font-weight:normal;white-space:nowrap;padding-right:12px">' . $e($row[0]) . '</th>'
+            . '<td><strong>' . $e($row[1]) . '</strong></td><td style="text-align:right">';
+        if ($row[2])
+            $html .= '<button type="button" class="btn btn-sm btn-link mollie-bt-copy" style="padding:0" data-copy="' . $e($row[0] === $lang['btIban'] ? str_replace(' ', '', $row[1]) : $row[1]) . '">' . $e($lang['btCopy']) . '</button>';
+        $html .= '</td></tr>';
+    }
+    $html .= '</tbody></table>';
+    $html .= '<p><small>' . $e($lang['btNote']) . '</small></p></div>';
+    $html .= '<script>document.querySelectorAll(".mollie-bt-copy").forEach(function(b){b.addEventListener("click",function(){var t=b.textContent;if(navigator.clipboard){navigator.clipboard.writeText(b.getAttribute("data-copy")).then(function(){b.textContent=' . json_encode($lang['btCopied']) . ';setTimeout(function(){b.textContent=t;},1500);});}});});</script>';
+
+    return $html;
 }
 
 /**
