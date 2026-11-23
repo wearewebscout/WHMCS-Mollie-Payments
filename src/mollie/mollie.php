@@ -4,7 +4,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 // Webscout: versie van onze fork, bij elke wijziging ophogen
 if (!defined('MOLLIE_WS_VERSION'))
-    define('MOLLIE_WS_VERSION', '1.1.5');
+    define('MOLLIE_WS_VERSION', '1.1.6');
 
 function mollie_config()
 {
@@ -104,7 +104,7 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
                 'method' => $method
             ));
 
-            $payment = $mollie->payments->create(array(
+            $paymentData = array(
                 'amount' => [
                     'value' => $params['amount'],
                     'currency' => $params['currency'],
@@ -118,7 +118,16 @@ function mollie_link($params, $method = Mollie_API_Object_Method::IDEAL)
                     'invoice_id' => $params['invoiceid'],
                 ),
                 'dueDate' => (($method == \Mollie\Api\Types\PaymentMethod::BANKTRANSFER) ? date('Y-m-d', strtotime('+100 days')) : NULL),
-            ));
+            );
+
+            // Webscout: e-mailadres van de klant meegeven bij overschrijving (ook via Mollie Checkout),
+            // dan vraagt Mollie het niet meer op de betaalpagina en mailt Mollie zelf de overschrijvingsgegevens.
+            $clientEmail = isset($params['clientdetails']['email']) ? trim((string) $params['clientdetails']['email']) : '';
+            if (($method === null || $method == \Mollie\Api\Types\PaymentMethod::BANKTRANSFER) && filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {
+                $paymentData['billingEmail'] = $clientEmail;
+            }
+
+            $payment = $mollie->payments->create($paymentData);
 
             update_query('gateway_mollie', array('paymentid' => $payment->id), array('id' => $transactionId));
 
