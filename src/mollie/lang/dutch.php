@@ -8,7 +8,7 @@ $_GATEWAYLANG['errorTransactionNotFound'] = 'Transactie is niet gevonden. Probee
 
 $_GATEWAYLANG['checkPayment'] = 'We controleren je betaling, moment geduld...';
 
-$_GATEWAYLANG['payWithBanktransfer'] = 'Toon de overschrijvingsgegevens';
+$_GATEWAYLANG['payWithBanktransfer'] = 'Betaal met Bank overschrijving';
 $_GATEWAYLANG['payWithBelfius'] = 'Betaal met Belfius';
 $_GATEWAYLANG['payWithCreditcard'] = 'Betaal met Creditcard';
 $_GATEWAYLANG['payWithIdeal'] = 'Betaal met iDeal';
@@ -39,14 +39,3 @@ $_GATEWAYLANG['subscribeNoMandate'] = 'Je bewaarde betaalmethode is niet meer ge
 $_GATEWAYLANG['subscribeCardExpired'] = 'Je bewaarde kaart is vervallen. Kies een nieuwe betaalmethode.';
 $_GATEWAYLANG['subscribeFailed'] = 'De automatische betaling is mislukt. Kies een nieuwe betaalmethode of betaal de factuur zelf.';
 $_GATEWAYLANG['subscribeTryLater'] = 'De betaling kon nu niet starten. We proberen het later opnieuw.';
-
-// Webscout: overschrijvingsgegevens op de factuur
-$_GATEWAYLANG['btIntro'] = 'Schrijf het bedrag over met deze gegevens. Gebruik de gestructureerde mededeling, dan verwerken we je betaling automatisch.';
-$_GATEWAYLANG['btBeneficiary'] = 'Begunstigde';
-$_GATEWAYLANG['btIban'] = 'IBAN';
-$_GATEWAYLANG['btBic'] = 'BIC';
-$_GATEWAYLANG['btAmount'] = 'Bedrag';
-$_GATEWAYLANG['btReference'] = 'Gestructureerde mededeling';
-$_GATEWAYLANG['btNote'] = 'Je kreeg deze gegevens ook per mail. Zodra je overschrijving binnen is, staat de factuur op betaald. Dat duurt meestal 1 tot 2 werkdagen.';
-$_GATEWAYLANG['btCopy'] = 'Kopieer';
-$_GATEWAYLANG['btCopied'] = 'Gekopieerd';
